@@ -7,6 +7,7 @@ interface IProcess<Brand, T, R> {
 
 // Algebra
 interface IProcessAlg<Brand> {
+  _nominal(tag: [Brand]): void;
   process<T, R>(f: ((v: T) => R)): IProcess<Brand, T, R>;
   seq<T, T1, R>(
     p1: IProcess<Brand, T, T1>,
@@ -14,54 +15,63 @@ interface IProcessAlg<Brand> {
   ): IProcess<Brand, T, R>;
 }
 
-class ExecutionBrand<T, R> {
-  _nominal(c: [typeof ExecutionBrand, T, R]): void {}
+namespace Execution {
+export class Brand {
+  _executionBrand: null;
 }
 
-interface ExecutingProcess<T, R> extends IProcess<typeof ExecutionBrand, T, R> {
-  id: string;
+interface ExecutingProcess<T, R> extends IProcess<Brand, T, R> {
 }
 
-class ExecutionFactory implements IProcessAlg<typeof ExecutionBrand> {
-  process<T, R>(f: (v: T) => R): IProcess<typeof ExecutionBrand, T, R> {
-    const process = <ExecutingProcess<T, R>>{ _nominal(x) {} };
+export class Factory implements IProcessAlg<Brand> {
+  _nominal(tag: [Brand]): void {}
+  process<T, R>(f: (v: T) => R): IProcess<Brand, T, R> {
+    const process = <ExecutingProcess<T, R>>{ _nominal(tag: [Brand, T, R]) {} };
     return process;
   }
 
   seq<T, T1, R>(
-    p1: IProcess<typeof ExecutionBrand, T, T1>,
-    p2: IProcess<typeof ExecutionBrand, T1, R>
-  ): IProcess<typeof ExecutionBrand, T, R> {
+    p1: IProcess<Brand, T, T1>,
+    p2: IProcess<Brand, T1, R>
+  ): IProcess<Brand, T, R> {
     return <ExecutingProcess<T, R>>{ _nominal(x) {}, id: "" };
   }
 }
+}
 
-class PrintBrand {}
-class ShowProcess<T, R> implements IProcess<typeof PrintBrand, T, R> {
+namespace Print {
+export class Brand {
+  _printBrand: null;
+}
+
+class ShowProcess<T, R> implements IProcess<Brand, T, R> {
   value: string;
   constructor(p: string) {
     this.value = p;
   }
-  _nominal(x: [typeof PrintBrand, T, R]) {}
+  _nominal(x: [Brand, T, R]) {}
 }
 
-class PrintFactory implements IProcessAlg<typeof PrintBrand> {
-  process<T, R>(f: (v: T) => R): IProcess<typeof PrintBrand, T, R> {
+export class Factory implements IProcessAlg< Brand> {
+  _nominal(tag: [Brand]): void {}
+
+  process<T, R>(f: (v: T) => R): IProcess< Brand, T, R> {
     return new ShowProcess<T, R>("process");
   }
 
   seq<T, T1, R>(
-    p1: IProcess<typeof PrintBrand, T, T1>,
-    p2: IProcess<typeof PrintBrand, T1, R>
-  ): IProcess<typeof PrintBrand, T, R> {
+    p1: IProcess< Brand, T, T1>,
+    p2: IProcess< Brand, T1, R>
+  ): IProcess< Brand, T, R> {
     const r1 = <ShowProcess<T, R>>(<any>p1);
     const r2 = <ShowProcess<T, R>>(<any>p2);
     return new ShowProcess<T, R>("seq " + r1.value + " " + r2.value);
   }
 }
+}
 
-const lf: IProcessAlg<typeof ExecutionBrand> = new ExecutionFactory();
-const pf: IProcessAlg<typeof PrintFactory> = new PrintFactory();
+const lf: IProcessAlg<Execution.Brand> = new Execution.Factory();
+let pf: IProcessAlg<Print.Brand> = new Print.Factory();
 
 const p1 = pf.process((x: string) => 1);
 
