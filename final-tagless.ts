@@ -3,7 +3,7 @@ interface ExecutingProcess<T, R> {}
 interface IProcess<Brand, T, R> {
   // Make interface nominal
   _nominal(tag: [Brand, T, R]): void;
-};
+}
 
 // Algebra
 interface IProcessAlg<Brand> {
@@ -56,7 +56,7 @@ class PrintFactory implements IProcessAlg<typeof PrintBrand> {
   ): IProcess<typeof PrintBrand, T, R> {
     const r1 = <ShowProcess<T, R>>(<any>p1);
     const r2 = <ShowProcess<T, R>>(<any>p2);
-    return new ShowProcess<T, R>("seq " + r1.value + " " + r2.value);
+    return new ShowProcess<T, R>(`seq:\n  ${r1.value}\n  ${r2.value}`);
   }
 }
 
@@ -69,5 +69,11 @@ let p2 = pf.process((x: number) => ({
   x: x
 }));
 
-const a = pf.seq(p1, p2);
-console.log(a);
+function value<T, R>(
+  v: IProcess<typeof PrintFactory, T, R>
+): ShowProcess<T, R> {
+  return <ShowProcess<T, R>>v;
+}
+
+const a = value(pf.seq(p1, p2));
+console.log(a.value);
