@@ -1,24 +1,22 @@
 // Brand is used to distinguish
 //
-interface IProcess<Brand, T, R> {
+export interface IProcess<Brand, T, R> {
   // Make interface nominal
   _nominal(tag: [Brand, T, R]): void;
-
-  // val inj : ’a list → (’a, t) app
-  // val prj : (’a, t) app → ’a list
 }
 
 // Algebra
-interface IProcessAlg<Brand> {
+export interface IProcessAlg<Brand> {
   _nominal(tag: [Brand]): void;
-  process<T, R>(f: ((v: T) => R)): IProcess<Brand, T, R>;
+  process<T, R>(f: ((v: T) => R | Promise<R>)): IProcess<Brand, T, R>;
   seq<T, T1, R>(
     p1: IProcess<Brand, T, T1>,
     p2: IProcess<Brand, T1, R>
   ): IProcess<Brand, T, R>;
 }
 
-namespace Execution {
+// Execute program interpreter
+export namespace Execution {
   export class Brand {
     _executionBrand: null;
     static prj<T, R>(a: IProcess<Brand, T, R>): Process<T, R> {
@@ -26,13 +24,18 @@ namespace Execution {
     }
   }
 
-  interface Process<T, R> extends IProcess<Brand, T, R> {}
+  interface Process<T, R> extends IProcess<Brand, T, R> {
+    run(v: T): Promise<R>;
+  }
 
   export class Factory implements IProcessAlg<Brand> {
     _nominal(tag: [Brand]): void {}
-    process<T, R>(f: (v: T) => R): IProcess<Brand, T, R> {
-      const process = <Process<T, R>>{
-        _nominal(tag: [Brand, T, R]) {}
+    process<T, R>(f: (v: T) => R | Promise<R>): IProcess<Brand, T, R> {
+      const process: Process<T, R> = {
+        _nominal(tag: [Brand, T, R]) {},
+        async run(v: T): Promise<R> {
+          return await f(v);
+        }
       };
       return process;
     }
@@ -41,12 +44,21 @@ namespace Execution {
       p1: IProcess<Brand, T, T1>,
       p2: IProcess<Brand, T1, R>
     ): IProcess<Brand, T, R> {
-      return <Process<T, R>>{ _nominal(x) {}, id: "" };
+      const process: Process<T, R> = {
+        _nominal(x) {},
+        async run(v: T): Promise<R> {
+          const r1 = await Brand.prj(p1).run(v);
+          const r2 = await Brand.prj(p2).run(r1);
+          return r2;
+        }
+      };
+      return process;
     }
   }
 }
 
-namespace Show {
+// Show program structure interpreter
+export namespace Show {
   export class Brand {
     _printBrand: null;
     static prj<T, R>(a: IProcess<Brand, T, R>): Process<T, R> {
@@ -82,6 +94,9 @@ namespace Show {
   }
 }
 
+// This is the most interesting function here
+// We can use the same DSL but different interpreters!!
+//
 function pipeline<T>(alg: IProcessAlg<T>) {
   return alg.seq(
     alg.seq(
